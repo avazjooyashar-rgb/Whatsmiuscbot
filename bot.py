@@ -1,43 +1,62 @@
+import os
 import telebot
 import yt_dlp
-import os
 
-TOKEN = "8551612297:AAE39yEI9FBARmCyvae6AnrsvjBwQWwF7wc"
+TOKEN = os.getenv("TOKEN")
+
+if not TOKEN:
+    raise Exception("TOKEN variable not found!")
+
 bot = telebot.TeleBot(TOKEN)
 
-@bot.message_handler(commands=['start'])
+
+@bot.message_handler(commands=["start"])
 def start(message):
-    bot.send_message(message.chat.id, "🎧 لینک اینستاگرام رو بفرست")
+    bot.send_message(
+        message.chat.id,
+        "🎧 لینک اینستاگرام رو بفرست."
+    )
+
 
 @bot.message_handler(func=lambda m: True)
 def download(message):
     url = message.text.strip()
 
     if "instagram.com" not in url:
-        bot.send_message(message.chat.id, "❌ فقط لینک اینستا بفرست")
+        bot.send_message(message.chat.id, "❌ فقط لینک اینستاگرام بفرست.")
         return
 
     bot.send_message(message.chat.id, "⏳ در حال دانلود...")
 
     try:
         ydl_opts = {
-            'outtmpl': 'video.mp4',
-            'format': 'mp4',
-            'quiet': True
+            "outtmpl": "video.%(ext)s",
+            "format": "mp4/best",
+            "quiet": True,
+            "noplaylist": True,
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
-        if os.path.exists("video.mp4"):
-            with open("video.mp4", "rb") as video:
+        video_file = None
+        for file in os.listdir():
+            if file.startswith("video."):
+                video_file = file
+                break
+
+        if video_file:
+            with open(video_file, "rb") as video:
                 bot.send_video(message.chat.id, video)
 
-            os.remove("video.mp4")
+            os.remove(video_file)
         else:
-            bot.send_message(message.chat.id, "❌ فایل پیدا نشد")
+            bot.send_message(message.chat.id, "❌ فایل پیدا نشد.")
 
     except Exception as e:
-        bot.send_message(message.chat.id, "❌ خطا در دانلود")
+        print(e)
+        bot.send_message(message.chat.id, "❌ خطا در دانلود ویدیو.")
 
-bot.infinity_polling()
+
+print("Bot Started...")
+bot.infinity_polling(skip_pending=True)
